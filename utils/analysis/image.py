@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # _authors_: Vozec
 
+from os import path
 import os
 import matplotlib.pyplot as plt
 from PIL import Image
@@ -82,7 +83,7 @@ def lsb_graph(in_file,savepath):
 def aperisolve(img):
 	mp_encoder = MultipartEncoder(
 		fields={
-	        'file':("rngcollision.jpg",open(img, 'rb')),
+	        'file':(os.path.basename(img),open(img, 'rb')),
 	        'zsteg_ext':'false',
 	        'zsteg_all':'false',
 	        'use_password':'false',
