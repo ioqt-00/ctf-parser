@@ -1,0 +1,27 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Server",
+            "type": "python",
+            "python": "/home/kali/.conda/envs/ctfd-parser/bin/python",
+            "request": "launch",
+            "program": "server.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "client",
+            "type": "python",
+            "python": "/home/kali/.conda/envs/ctfd-parser/bin/python",
+            "request": "launch",
+            "program": "client.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}
+// createCTF -t 254197d99cd751f4120961863af4ce9792dddb2c2d64ad1b4565fc566025fe17 --url https://ctf.wpictf.xyz/ -n wpictf

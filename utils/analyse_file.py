@@ -20,7 +20,7 @@ from utils.analysis.wireshark import analyse_wireshark
 from utils.analysis.elf import analyse_elf
 
 
-def b_filesize(l):
+def human_filesize(l):
 	units = ['B','kB','MB','GB','TB','PB']
 	for k in range(len(units)):
 		if l < (1024**(k+1)):
@@ -53,7 +53,7 @@ def analysis(pathfile,formatflag):
 
 	file = os.path.basename(pathfile)
 	file_cmd = os.popen('file "%s"'%pathfile).read().split(pathfile)[1]
-	size = b_filesize(int(os.path.getsize(pathfile)))
+	size = human_filesize(int(os.path.getsize(pathfile)))
 	line = os.popen('xxd -p -l 12 "%s"'%pathfile).read()
 
 	magic = ''.join([line[i:i+2]+' ' for i in range(0, len(line), 2)])

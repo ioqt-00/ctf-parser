@@ -33,7 +33,7 @@ import utils.createteam
 #import utils.brute
 
 from utils.osint.osint_main import *
-from utils.other import sizeok,b_filesize,download,rdnname,findfile,finddirectory
+from utils.other import sizeok,human_filesize,download,rdnname,findfile,finddirectory
 
 ##### Modify ################################################################################
 
@@ -179,6 +179,10 @@ def load(ctx=None,display_message=None):
     if(display_message != True):
         logger(f"All Challenges loaded !","info",1,1)
 
+def setup_session(session, url):
+    CONFIG["base_url"] = url
+    CONFIG["session"] = session
+
 def setup(username, password, url):
     CONFIG['base_url'] = url
     CONFIG['username'] = username
@@ -281,7 +285,7 @@ async def start(ctx, channel):
                             # Save file
                             open(path_file,'wb').write(file_resp.content)
                             res_file = os.popen('file "%s"'%path_file).read().split('/%s/%s'%(name,file_name))[1]
-                            msg = "**File**: %s\n**Size**: %s\n**Info**: %s"%(file_name,b_filesize(size),res_file)
+                            msg = "**File**: %s\n**Size**: %s\n**Info**: %s"%(file_name,human_filesize(size),res_file)
 
                             # If size not OK
                             if int(size)//(1024*1024) > 7.50:
@@ -540,6 +544,10 @@ async def on_ready():
     # Handler bot on startup
     logger('%s has connected to Discord!\n'%bot.user.name,"info",1,2)
     await bot.change_presence(status=discord.Status.online, activity=discord.Game(PREFIX + 'help'))
+
+@bot.event
+async def on_message(message):
+    logger(message.content,"info",1,2)
 
 @bot.command()
 async def change(ctx):
@@ -859,7 +867,8 @@ async def CreateCTFD(ctx, Username=None, Password=None, Url=None, ChannelName=No
         logger("Creating CTFD channel","info",1,0)
         
         # Creation des setup pour le login
-        setup(Username, Password, Url)  
+        if Username is not None:
+            setup(Username, Password, Url)
 
         # Login to CTFD
         logger("Trying to login to : %s"%Url,"info",1,1)  
@@ -874,9 +883,9 @@ async def CreateCTFD(ctx, Username=None, Password=None, Url=None, ChannelName=No
             # Get Channel Object
             logger("Logged in with user: %s"%CONFIG['username'],"log",0,1)
             await ctx.send("**[+] Logged in with user: %s**"%CONFIG['username'])
-            channel = discord.utils.get(bot.get_all_channels(), name=ChannelName)    # Success
+            channels = bot.get_all_channels()
+            channel = discord.utils.get(channels, name=ChannelName)    # Success
             
-
             # Start Parsing
             await start(ctx, channel)  # Start
 
@@ -885,6 +894,54 @@ async def CreateCTFD(ctx, Username=None, Password=None, Url=None, ChannelName=No
         else:
             # Invalid Creds
             await ctx.reply("**Invalid Credentials or URL**")  
+        
+        logger("Thread Creation END","info",0,1)
+
+
+    else:
+        logger(' [*] {0.author} not allowed.'.format(ctx),"error",1,0)
+        await ctx.send("**[*] You are not allowed to run this command!**")  # Action Not Permitted
+
+@bot.command()
+async def CreateCTFDFromSession(ctx, Session=None, Url=None, ChannelName=None, formatf=None):   # Create CTFD Channels
+    global ctf_name, challenge_list, formatflag, CONFIG
+
+    # If not challenge Loaded > Load saved from files
+    if(len(challenge_list.keys()) == 0):
+        load(None,True)
+
+    # Check if Parameters are valid
+    if Session == None or Url == None or ChannelName == None:  # Break if invalid Settings
+        logger("Bad arguments","error",0,0)
+        await help(ctx)
+
+    # Sanitize format flag
+    ctf_name = ChannelName
+    if(formatf != None):
+        formatflag = formatf.replace('{','').replace('}','')
+
+    # If author as permissions
+    if ctx.author.guild_permissions.manage_channels:
+
+        # Start Create CTFD
+        logger("Creating CTFD channel","info",1,0)
+        
+        setup_session(Session, Url)
+        session.cookies.set("session", Session)
+
+        # Create Channel
+        await createchannel(ctx, ChannelName)
+
+        # Get Channel Object
+        logger("Logged in with user: %s"%CONFIG['username'],"log",0,1)
+        await ctx.send("**[+] Logged in with user: %s**"%CONFIG['username'])
+        channel = discord.utils.get(bot.get_all_channels(), name=ChannelName)    # Success
+
+        # Start Parsing
+        await start(ctx, channel)  # Start
+
+        # Save in config.json
+        saveconfig(ChannelName)
         
         logger("Thread Creation END","info",0,1)
 

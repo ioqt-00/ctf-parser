@@ -75,7 +75,7 @@ def sizeok(filename,max_=7.50,symbol = operator.lt):
     else:
         return False
 
-def b_filesize(l):
+def human_filesize(l):
 
     # Convert file Lenght   
     units = ['B','kB','MB','GB','TB','PB']

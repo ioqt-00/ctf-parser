@@ -12,6 +12,8 @@ def help_msg(PREFIX,message):
 
 	embed.add_field(name='%sCreateCTFD <Username> <Password> <Url> <ChannelName>'%PREFIX,value='Create a channel + threads sorted by name',inline=False)
 
+	embed.add_field(name='%sCreateCTFDFromSession <Session> <Url> <ChannelName>'%PREFIX,value='Create a channel + threads sorted by name',inline=False)
+
 	embed.add_field(name='\n%sflagged ThisIsMySuperFlag (in challenge thread)'%PREFIX,value='Store the flag + renamme the challenge thread',inline=False)
 
 	embed.add_field(name='%send (in ctfd challenge)'%PREFIX,value='Move the ctfd channel in other category',inline=False)

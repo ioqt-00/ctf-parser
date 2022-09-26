@@ -5,12 +5,9 @@
 from typing import  List, Union
 import requests
 from requests import Session
-from requests.compat import urljoin, urlparse, urlsplit
+from requests.compat import urljoin
 import re
 import json
-
-import discord
-from discord.ext import commands
 
 from utils.logger import logger
 
