@@ -37,7 +37,7 @@ from utils.other import sizeok,b_filesize,download,rdnname,findfile,finddirector
 
 ##### Modify ################################################################################
 
-TOKEN         = os.environt['DISCORD_TOKEN']  # Discord bot token
+TOKEN         = os.environ['DISCORD_TOKEN']  # Discord bot token
 CategoryName  = 'CTF'  # Category Channel Name
 PREFIX        = '?'  # Bot Prefix
 
