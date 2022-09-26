@@ -11,8 +11,8 @@ import json
 
 from utils.logger import logger
 
-async def fetch(ctx,url: str,session) -> Union[List[dict], dict]:
-    res = session.get(url)
+async def fetch(ctx,url: str,request_session) -> Union[List[dict], dict]:
+    res = request_session.get(url)
     if '{\"message' in res.text:
         msg = res.json()['message']
         await ctx.send(f'** [+] {msg}**')
@@ -24,12 +24,12 @@ async def fetch(ctx,url: str,session) -> Union[List[dict], dict]:
         return res.json()['data']
 
 
-async def login(ctx,CONFIG,session):
+async def login(ctx,CONFIG,request_session):
     if CONFIG['token'] != None:
         await ctx.send('**[+] Login using token ...**')
-        session.headers.update({"Content-Type": "application/json"})
-        session.headers.update({"Authorization": f"Token {CONFIG['token']}"})
-        resp = session.get(CONFIG['base_url']+'/api/v1/users/me').text
+        request_session.headers.update({"Content-Type": "application/json"})
+        request_session.headers.update({"Authorization": f"Token {CONFIG['token']}"})
+        resp = request_session.get(CONFIG['base_url']+'/api/v1/users/me').text
 
         # Valid token ? 
         if('success\": true' in resp):
@@ -56,10 +56,10 @@ async def login(ctx,CONFIG,session):
         else:
 
             # If normal CTFD
-            nonce = get_nonce(CONFIG,session)
+            nonce = get_nonce(CONFIG,request_session)
 
             # Login
-            res = session.post(
+            res = request_session.post(
                 urljoin(CONFIG['base_url'], '/login'),
                 data={
                     'name': CONFIG['username'],
@@ -72,16 +72,16 @@ async def login(ctx,CONFIG,session):
             if 'incorrect' in res.text:
                 logger('Unable to Login With those credentials','error',0,1)
                 return False,CONFIG
-            elif 'success\": true' in session.get(CONFIG['base_url']+'/api/v1/users/me').text:
+            elif 'success\": true' in request_session.get(CONFIG['base_url']+'/api/v1/users/me').text:
                 return True,CONFIG
             else:
                 return False,CONFIG
 
     return False,CONFIG
 
-def get_nonce(CONFIG,session) -> str:
+def get_nonce(CONFIG,request_session) -> str:
     # Regex to get 'nonce token' in html page
-    res = session.get(urljoin(CONFIG['base_url'], '/login'))
+    res = request_session.get(urljoin(CONFIG['base_url'], '/login'))
     #print(res.text)
     match = re.search('name="nonce"(?:[^<>]+)?value="([0-9a-f]{64})"', res.text)
     if(match != None):
@@ -90,18 +90,18 @@ def get_nonce(CONFIG,session) -> str:
         return ""
         
 
-async def get_challenges(ctx,CONFIG,session):
+async def get_challenges(ctx,CONFIG,request_session):
     logger('Getting challenges ...','log',1,1)
 
     # Get All challenges
-    challenges = await fetch(ctx,urljoin(CONFIG['base_url'], '/api/v1/challenges'),session)
+    challenges = await fetch(ctx,urljoin(CONFIG['base_url'], '/api/v1/challenges'),request_session)
     result = []
 
     # Get info challenge one per one
     for challenge in challenges:
         try:
             # Fetch api
-            res = await fetch(ctx,urljoin(CONFIG['base_url'], '/api/v1/challenges/%s'%challenge["id"]),session)
+            res = await fetch(ctx,urljoin(CONFIG['base_url'], '/api/v1/challenges/%s'%challenge["id"]),request_session)
             
             # Get Files
             file = []

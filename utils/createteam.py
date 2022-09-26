@@ -18,20 +18,20 @@ def create(url,cfg):
 	if not check_json(cfg):
 		return '**[+] Error : Invalid Json**'
 	try:
-		session = requests.session()
+		request_session = requests.session()
 
 		if not url.startswith("http://") and not url.startswith("https://"):
 			url = "https://" + url	
 		target = url.rstrip('/')
 
-		if(not Check_Ctfd(session,url)):
+		if(not Check_Ctfd(request_session,url)):
 			return '**[+] Please provide a valid ctfd url !**'
 		else:
 			final = ''
 			config = json.loads(cfg)
 
 			for user in config["users"]:
-				session.cookies.clear()
+				request_session.cookies.clear()
 
 				if(user[1] == ""):
 					user[1] = "%s@tempmail.com"%(''.join(random.choice("abcdefghijklmnopqrstuvwxyz") for i in range(12)))
@@ -46,7 +46,7 @@ def create(url,cfg):
 					"team_password":config["teampwd"],
 					}
 
-				succeed,in_team = Ctfd_Register(session,data,url)
+				succeed,in_team = Ctfd_Register(request_session,data,url)
 
 				if(succeed):
 					final += "```\n"

@@ -4,8 +4,8 @@ import logging
 import json
 import requests
 
-def fetch(ctx, url: str, session) -> Union[List[dict], dict]:
-    res = session.get(url)
+def fetch(ctx, url: str, request_session) -> Union[List[dict], dict]:
+    res = request_session.get(url)
     if '{\"message' in res.text:
         msg = res.json()['message']
         ctx.send(f'** [+] {msg}**')
@@ -15,12 +15,12 @@ def fetch(ctx, url: str, session) -> Union[List[dict], dict]:
     else:
         return res.json()['data']
 
-def login(ctx, CONFIG,session):
+def login(ctx, CONFIG, request_session):
     if CONFIG['token'] != None:
         ctx.send('**[+] Login using token ...**')
-        session.headers.update({"Content-Type": "application/json"})
-        session.headers.update({"Authorization": f"Token {CONFIG['token']}"})
-        resp = session.get(CONFIG['base_url']+'/api/v1/users/me').text
+        request_session.headers.update({"Content-Type": "application/json"})
+        request_session.headers.update({"Authorization": f"Token {CONFIG['token']}"})
+        resp = request_session.get(CONFIG['base_url']+'/api/v1/users/me').text
 
         # Valid token ? 
         if('success\": true' in resp):
@@ -46,10 +46,10 @@ def login(ctx, CONFIG,session):
             return False,CONFIG
         else:
             # If normal CTFD
-            nonce = get_nonce(CONFIG,session)
+            nonce = get_nonce(CONFIG,request_session)
 
             # Login
-            res = session.post(
+            res = request_session.post(
                 urljoin(CONFIG['base_url'], '/login'),
                 data={
                     'name': CONFIG['username'],
@@ -62,25 +62,25 @@ def login(ctx, CONFIG,session):
             if 'incorrect' in res.text:
                 logging.error('Unable to Login With those credentials')
                 return False,CONFIG
-            elif 'success\": true' in session.get(CONFIG['base_url']+'/api/v1/users/me').text:
+            elif 'success\": true' in request_session.get(CONFIG['base_url']+'/api/v1/users/me').text:
                 return True,CONFIG
             else:
                 return False,CONFIG
 
     return False,CONFIG
 
-def get_challenges(ctx, CONFIG, session):
+def get_challenges(ctx, CONFIG, request_session):
     logging.info('Getting challenges ...')
 
     # Get All challenges
-    challenges = fetch(ctx,urljoin(CONFIG['base_url'], '/api/v1/challenges'),session)
+    challenges = fetch(ctx,urljoin(CONFIG['base_url'], '/api/v1/challenges'), request_session)
     result = []
 
     # Get info challenge one per one
     for challenge in challenges:
         try:
             # Fetch api
-            res = fetch(ctx,urljoin(CONFIG['base_url'], '/api/v1/challenges/%s'%challenge["id"]),session)
+            res = fetch(ctx,urljoin(CONFIG['base_url'], '/api/v1/challenges/%s'%challenge["id"]), request_session)
             
             # Get Files
             file = []

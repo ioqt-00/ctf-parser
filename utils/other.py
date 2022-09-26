@@ -2,15 +2,24 @@
 # -*- coding: utf-8 -*-
 # _authors_: Vozec
 
+from __future__ import annotations
+from dataclasses import dataclass, asdict
+import pickle
+
 import random
 import os
 import subprocess
 import glob
 import operator
 from time import sleep
-from utils.logger import logger
 import logging
 from datetime import date
+from typing import Dict, TYPE_CHECKING
+import json
+from unicodedata import category
+
+if TYPE_CHECKING:
+    from framework.classes import Ctf, Challenge
 
 def cleanpath(path):
     return os.path.relpath(os.path.normpath(os.path.join("/", path)), "/")
@@ -42,7 +51,7 @@ def readfile(path):
 	f.close()
 	return cnt
 
-## Append Result to result list 
+## Append Result to result list
 def append_result(result,command,cnt):
     if(os.path.isfile(cnt)):
         if(cnt.endswith('.txt') and sizeok(cnt,3.00,operator.lt)):
@@ -115,61 +124,39 @@ def execmd(cmd,t=0.5):
     cnt.kill()
     return None
 
-def saveconfig(all_ctf=None, ctfname=None, formatf=None):
-    global ctf_name,args
-    url = ''
+def saveconfig(ctx, ctf_dict: Dict[str, Ctf], ctf_name: str, flag_format: str):
+    # Save the current selected ctf after serialization
+    path = ctx.rootpath.joinpath("ctfd", ctf_name, "config.pkl")
+    with open(path, 'wb') as json_file:
+        pickle.dump(ctx.selected_ctf, json_file)
 
-    ## Getting actual CTF 
-    if (ctfname == None):ctfname = ctf_name
+    # TODO custom encoder
+    ctx.send('[+] Ctfd saved in config.pkl')
 
-    all_ = {}
-    ## Check if name is in list
-    for i in range(len(all_ctf)):
-        if (ctfname in all_ctf[i][1].keys()): 
-            ctf_name = all_ctf[i][0]
+def loadconfig(ctx):
+    # Last creation date
+    lasttime    = 0
 
-        if (ctfname in all_ctf[i][0]):
-            all_ = all_ctf[i][1]
-            url = all_ctf[i][2]
-            formatf = all_ctf[i][3]
+    # Enum in all ctfd
+    ctf_counter = 0
+    for ctf_path in ctx.rootpath.joinpath("ctfd").glob("*"):
+        ctf_counter += 1
+        path = ctf_path.joinpath("config.pkl")
 
-    # Starting to create the save object with all info
+        # If file exist
+        if path.is_file():
+            # Update last file date by default
+            t = os.path.getmtime(path)
+            if(t > lasttime or lasttime == 0):
+                ctf_name = ctf_path.name
+                lasttime = t
 
-    # Getting all challenge 
-    chall = []
-    for element in all_.keys():
-        obj = all_[element]
-        l = {
-            'name': obj[3],
-            'points': obj[1],
-            'solved': obj[2],
-            'flag': obj[4],
-            'description': obj[0],
-            'thread': obj[5],
-            'category': obj[6],
-            'id': obj[7],
-            'file': obj[8]
-        }
-        chall.append(l)
+            # Read config.json
+            with open(path, "rb") as file:
+                ctf = pickle.load(file)
 
-    # Final Object
-    data = {
-        'name': ctfname,
-        'url': url,
-        'date': str(date.today()),
-        'formatflag':formatf,
-        'challenges': chall
-    }
+            ctx.ctf_dict["ctf_name"] = ctf
 
-    current_dir = os.path.dirname(os.path.abspath(__file__))
+            logging.info("%d challenges loaded from : %s", len(ctf.challenge_dict), ctf_name)
 
-    # If save option > New file
-    path = '%s/ctfd/%s/config_0.json'%(current_dir,ctf_name.lower())
-
-    # remove old config
-    if os.path.isfile(path):os.remove(path)
-
-    # Save the file in Json Format
-    with open(path, 'w', encoding='utf8') as json_file:json.dump(data, json_file, allow_nan=True)
-
-    logger('[+] Ctfd saved in config_0.json','info',1,1)
+    logging.info("All Challenges loaded !")

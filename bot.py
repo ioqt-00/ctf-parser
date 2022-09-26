@@ -117,7 +117,7 @@ def saveconfig(ctfname=None,formatf=None):
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
     # If save option > New file
-    path = '%s/ctfd/%s/config_0.json'%(current_dir,ctf_name.lower())
+    path = '%s/ctfd/%s/config.json'%(current_dir,ctf_name.lower())
 
     # remove old config
     if os.path.isfile(path):os.remove(path)
@@ -125,7 +125,7 @@ def saveconfig(ctfname=None,formatf=None):
     # Save the file in Json Format
     with open(path, 'w', encoding='utf8') as json_file:json.dump(data, json_file, allow_nan=True)
 
-    logger('[+] Ctfd saved in config_0.json','info',1,1)
+    logger('[+] Ctfd saved in config.json','info',1,1)
 
 def load(ctx=None,display_message=None):
     global challenge_list, ctf_name, all_ctf, formatflag
@@ -138,7 +138,7 @@ def load(ctx=None,display_message=None):
     for ctf in  glob("%s/ctfd/*/"%current_dir):
 
         current_list = {}
-        path = '%sconfig_0.json'%ctf
+        path = '%sconfig.json'%ctf
 
         # If file exist
         if(os.path.isfile(path)):

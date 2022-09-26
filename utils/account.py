@@ -6,14 +6,13 @@ import re
 import requests
 import random
 import json
-import os
 import names
 
 from utils.logger import logger
 
-def Check_Ctfd(session,url):
+def Check_Ctfd(request_session,url):
     try:
-        res = session.get(url).text
+        res = request_session.get(url).text
         if('Powered by CTFd' in res):
             return True
         elif('We are checking your browser' in res):

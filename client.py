@@ -4,8 +4,7 @@ import zmq
 #############################################################################################
 
 if __name__ == '__main__':
-    if not os.path.isdir('ctfd'):
-        os.makedirs('ctfd', exist_ok=True) 
+    os.makedirs('ctfd', exist_ok=True)
     
     context = zmq.Context()
     socket = context.socket(zmq.PAIR)
