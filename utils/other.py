@@ -9,6 +9,8 @@ import glob
 import operator
 from time import sleep
 from utils.logger import logger
+import logging
+from datetime import date
 
 def cleanpath(path):
     return os.path.relpath(os.path.normpath(os.path.join("/", path)), "/")
@@ -112,3 +114,62 @@ def execmd(cmd,t=0.5):
                 return None
     cnt.kill()
     return None
+
+def saveconfig(all_ctf=None, ctfname=None, formatf=None):
+    global ctf_name,args
+    url = ''
+
+    ## Getting actual CTF 
+    if (ctfname == None):ctfname = ctf_name
+
+    all_ = {}
+    ## Check if name is in list
+    for i in range(len(all_ctf)):
+        if (ctfname in all_ctf[i][1].keys()): 
+            ctf_name = all_ctf[i][0]
+
+        if (ctfname in all_ctf[i][0]):
+            all_ = all_ctf[i][1]
+            url = all_ctf[i][2]
+            formatf = all_ctf[i][3]
+
+    # Starting to create the save object with all info
+
+    # Getting all challenge 
+    chall = []
+    for element in all_.keys():
+        obj = all_[element]
+        l = {
+            'name': obj[3],
+            'points': obj[1],
+            'solved': obj[2],
+            'flag': obj[4],
+            'description': obj[0],
+            'thread': obj[5],
+            'category': obj[6],
+            'id': obj[7],
+            'file': obj[8]
+        }
+        chall.append(l)
+
+    # Final Object
+    data = {
+        'name': ctfname,
+        'url': url,
+        'date': str(date.today()),
+        'formatflag':formatf,
+        'challenges': chall
+    }
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # If save option > New file
+    path = '%s/ctfd/%s/config_0.json'%(current_dir,ctf_name.lower())
+
+    # remove old config
+    if os.path.isfile(path):os.remove(path)
+
+    # Save the file in Json Format
+    with open(path, 'w', encoding='utf8') as json_file:json.dump(data, json_file, allow_nan=True)
+
+    logger('[+] Ctfd saved in config_0.json','info',1,1)

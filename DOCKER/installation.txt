@@ -1,3 +1,0 @@
-put your discord bot token in ENV Var in the dockerfile
-
-cmd: docker build -t discordbot .
