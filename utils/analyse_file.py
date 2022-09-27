@@ -9,7 +9,6 @@ import re
 import sys
 
 from utils.logger import logger
-from utils.other import readfile
 
 
 from utils.analysis.image import analyse_picture

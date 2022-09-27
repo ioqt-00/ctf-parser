@@ -18,7 +18,7 @@
             "type": "python",
             "python": "/home/kali/.conda/envs/ctfd-parser/bin/python",
             "request": "launch",
-            "program": "client.py",
+            "program": "clients/cli.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }

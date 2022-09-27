@@ -1,10 +1,19 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# _authors_: ioqt
+
+# pylint: disable=redefined-outer-name
+
+"""main function of server, will communicate with a client and command the execution of
+info gathering, parsing & basic analysis"""
+
 import argparse
 import logging
 from typing import Dict
-import requests
 from pathlib import Path
 
 import zmq
+import requests
 
 from framework import list_, select, configure, flag, create_ctf, show
 from framework.classes import Ctf, Challenge
@@ -13,24 +22,27 @@ from utils.other import loadconfig
 #########################################################################################
 
 class Context():
-    challenge_dict: Dict[str, Challenge] = {}
-    ctf_dict: Dict[str, Ctf] = {}
+    """Main context of the server, will be passed to submodules to handle the communication
+    with the user"""
+    def __init__(self):
+        self.challenge_dict: Dict[str, Challenge] = {}
+        self.ctf_dict: Dict[str, Ctf] = {}
 
-    ctf_name: str = ""
-    flag_format: str = ""
+        self.ctf_name: str = ""
+        self.flag_format: str = ""
 
-    selected_ctf: Ctf = None
-    selected_challenge: Challenge = None
+        self.selected_ctf: Ctf = None
+        self.selected_challenge: Challenge = None
 
-    rootpath = Path(__file__).resolve().parent
+        self.rootpath = Path(__file__).resolve().parent
 
-    request_session = requests.Session()
-    CONFIG = {
-        'user': None,
-        'password': None,
-        'base_url': None,
-        'token': None,
-    }
+        self.request_session = requests.Session()
+        self.request_config = {
+            'user': None,
+            'password': None,
+            'base_url': None,
+            'token': None,
+        }
 
     def send(self, msg):
         SOCKET.send_string(msg)
@@ -38,12 +50,17 @@ class Context():
     def recv(self):
         return SOCKET.recv_string()
 
+    def reset(self):
+        logging.debug("Resetting server")
+        self.__init__()
+
+
 def main_switch(cmd, args) -> None:
     if cmd == "createCTF":
         create_ctf(CTX, args)
-    elif cmd == "list" or cmd == "ls":
+    elif cmd in set("list","ls"):
         list_(CTX, args)
-    elif cmd == "select" or cmd == "cd":
+    elif cmd in set("select","cd"):
         select(CTX, args)
     elif cmd == "config":
         configure()
@@ -51,6 +68,10 @@ def main_switch(cmd, args) -> None:
         flag(CTX, args)
     elif cmd == "show":
         show(CTX, args)
+    elif cmd == "reset":
+        CTX.reset()
+        loadconfig(CTX)
+        return
     else:
         CTX.send(f"Command not found: {cmd}")
     CTX.send("EOL")
@@ -72,13 +93,14 @@ if __name__ == '__main__':
     format_ = "%(levelname)s %(asctime)s %(message)s"
     logging.basicConfig(format=format_, datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.DEBUG)
 
-    context = zmq.Context()
-    SOCKET = context.socket(zmq.PAIR)
+    zmq_context = zmq.Context()
+    SOCKET = zmq_context.socket(zmq.PAIR)
     SOCKET.bind('tcp://127.0.0.1:5555')
     CTX = Context()
     loadconfig(CTX)
     while True:
         try:
+            CTX.send("server > ")
             msg = CTX.recv()
             if msg != "":
                 cmd_args = msg.split()

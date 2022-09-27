@@ -3,6 +3,7 @@
 # _authors_: Vozec
 # _date_ : 14/03/2022
 
+# TODO obsolete, need to clean up 
 
 import discord
 from discord.ext import commands

@@ -1,8 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# _authors_: ioqt
 
 from __future__ import annotations
 import argparse
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 import sys
 
 from prettytable import PrettyTable
@@ -11,8 +14,6 @@ from helpers import ctfdhelper
 from utils.other import saveconfig
 if TYPE_CHECKING:
     from server import Context
-
-from . import not_implemented
 
 def list_(ctx: Context, args_list: list):
     logging.debug("Listing ctf or challenges")
@@ -60,7 +61,10 @@ def select(ctx: Context, args_list: list):
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('id', type=int, help='Id of either chall or ctf to select')
     parser.add_argument("--ctf-id", action='store_true', help="Select ctf")
-    parser.add_argument("--challenge-id", action='store_true', help="Select challenge in selected ctf")
+    parser.add_argument("--challenge-id",
+                        action='store_true',
+                        help="Select challenge in selected ctf"
+                    )
     args = parser.parse_args(args_list)
 
     ctf_id = args.ctf_id
@@ -108,7 +112,7 @@ def flag(ctx: Context, args_list: list):
 def create_ctf(ctx: Context, args: list):
     logging.info("Launching appropriate create_ctf")
     ctfdhelper.create_ctf(ctx, args)
-    saveconfig(ctx, ctx.challenge_dict, ctx.ctf_name, ctx.flag_format)
+    saveconfig(ctx)
 
 def show(ctx: Context, args_list: list):
     logging.debug("Showing challenge")

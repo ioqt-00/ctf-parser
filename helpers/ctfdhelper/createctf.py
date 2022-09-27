@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# _authors_: Vozec, ioqt
+
 import os
 import sys
 from urllib.parse import urlparse, urljoin
@@ -48,15 +52,15 @@ def create_ctf(ctx, args_list) -> None:
         ctx.flag_format = flag_format.replace('{','').replace('}','')
 
     # Creation des setup pour le login
-    ctx.CONFIG['base_url'] = url
-    ctx.CONFIG['username'] = username
-    ctx.CONFIG['password'] = password
-    ctx.CONFIG['token'] = token
+    ctx.request_config['base_url'] = url
+    ctx.request_config['username'] = username
+    ctx.request_config['password'] = password
+    ctx.request_config['token'] = token
     ctx.ctf_name = ctf_name
 
     # Login to CTFD
     logging.info("Trying to login to : %s", url)
-    islogged, ctx.CONFIG = utils.login(ctx, ctx.CONFIG, ctx.request_session)
+    islogged, ctx.request_config = utils.login(ctx)
 
     if not islogged:
         ctx.send("Error during logging")
@@ -67,10 +71,11 @@ def create_ctf(ctx, args_list) -> None:
     logging.info("Thread Creation END")
 
 def parse(ctx):
+    """Get challenges from ctfd api, parse and create Challenge instances to order them"""
     # Parse infos
     #Parsing challenges
     ctx.send("Getting challenges")
-    challenges = utils.get_challenges(ctx, ctx.CONFIG, ctx.request_session)
+    challenges = utils.get_challenges(ctx)
 
     challenge_dict = {}
     if ctx.flag_format is None or ctx.flag_format=='':
@@ -98,7 +103,7 @@ def parse(ctx):
             for chall in files:
                 try:
                     # Check if size is not big
-                    url = urljoin(ctx.CONFIG['base_url'],str(chall))
+                    url = urljoin(ctx.request_config['base_url'],str(chall))
 
                     # Curl file
                     file_resp = requests.get(url, allow_redirects=True)
@@ -137,7 +142,7 @@ def parse(ctx):
         if not saved:
             ctf = Ctf(0,
                 ctx.ctf_name,
-                ctx.CONFIG['base_url'],
+                ctx.request_config['base_url'],
                 ctx.flag_format,
                 challenge_dict
             )

@@ -99,3 +99,7 @@ __Content:__  ./config/example.json
 
 ## Demo :
 https://user-images.githubusercontent.com/61807609/154075676-ae335753-e326-44d0-a0cd-261e431caa30.mp4
+
+
+# TODO server may be an actual http server (can share work remotely)
+# TODO or let the client decide if it serves on Internet ?
