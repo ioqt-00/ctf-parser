@@ -33,13 +33,12 @@ def saveconfig(ctx: Context) -> None:
 def loadconfig(ctx: Context) -> None:
     """Load every saved ctf"""
     logging.debug("Loading config")
-    # Last creation date
-    lasttime    = 0
 
     # Enum in all ctfd
     ctf_counter = 0
     for ctf_path in ctx.rootpath.joinpath("ctfd").glob("*"):
-        ctf_counter += 1
+        # Last creation date
+        lasttime    = 0
         path = ctf_path.joinpath("config.pkl")
 
         # If file exist
@@ -54,8 +53,9 @@ def loadconfig(ctx: Context) -> None:
             with open(path, "rb") as file:
                 ctf = pickle.load(file)
 
-            ctx.ctf_dict["ctf_name"] = ctf
+            ctx.ctf_dict[ctf_name] = ctf
+            ctf_counter += 1
 
             logging.info("%d challenges loaded from : %s", len(ctf.challenge_dict), ctf_name)
 
-    logging.info("All Challenges loaded !")
+    logging.info("%d ctf loaded", ctf_counter)

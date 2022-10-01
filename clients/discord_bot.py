@@ -1,203 +1,42 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# _authors_: Vozec
-# _date_ : 14/03/2022
+# _authors_: Vozec, ioqt
 
-# TODO obsolete, need to clean up 
+# TODO obsolete, need to clean up
+
+from __future__ import annotations
+
+import os
+import logging
+from typing import TYPE_CHECKING
 
 import discord
 from discord.ext import commands
 
-from requests.compat import urljoin, urlparse, urlsplit
-import re
-import os
-import json
-from datetime import date
-import time
-from glob import glob
-import argparse
-import requests
-import random
-import urllib
-import emoji
-import subprocess
-import os
-from utils.logger import logger
-import utils.analyse_file
-import utils.account
-import utils.help
-import utils.cypher
-import utils.parser
-import utils.ctftime
-import utils.crypto
-import utils.createteam
-#import utils.brute
-
-from utils.osint.osint_main import *
-from utils.other import sizeok,human_filesize,download,rdnname,findfile,finddirectory
+if TYPE_CHECKING:
+    from server import Context
 
 ##### Modify ################################################################################
 
 TOKEN         = os.environ['DISCORD_TOKEN']  # Discord bot token
-CategoryName  = 'CTF'  # Category Channel Name
+channel_category_name  = 'CTF'  # Category Channel Name
 PREFIX        = '?'  # Bot Prefix
 
 #############################################################################################
 
 bot = commands.Bot(command_prefix=PREFIX, description="CTFd Manager BOT", help_command=None)
-challenge_list = {}
-all_ctf = []
-ctf_name = ""
-formatflag = ""
-session = requests.Session()
-args = {}
-
-CONFIG = {
-    'PREFIX':PREFIX,
-    'username': None,
-    'password': None,
-    'base_url': None,
-    'token':None
-    }
 
 #############################################################################################
 
-def parse_args():
-    global args
-    parser = argparse.ArgumentParser(add_help=True, description='This tools is used to create automatically discord threads by scraping ctfd plateform and collecting name , category , description and points of challenges.')
-    parser.add_argument("-a", "--analyse", dest="analyse_file", action="store_true", default=False, help="Analyse all challenges downloaded files")
-    args = parser.parse_args()
-    return args
-
-def saveconfig(ctfname=None,formatf=None):
-    global ctf_name,args
-    url = ''
-
-    ## Getting actual CTF 
-    if (ctfname == None):ctfname = ctf_name
-
-    all_ = {}
-    ## Check if name is in list
-    for i in range(len(all_ctf)):
-        if (ctfname in all_ctf[i][1].keys()): 
-            ctf_name = all_ctf[i][0]
-
-        if (ctfname in all_ctf[i][0]):
-            all_ = all_ctf[i][1]
-            url = all_ctf[i][2]
-            formatf = all_ctf[i][3]
-
-    # Starting to create the save object with all info
-
-    # Getting all challenge 
-    chall = []
-    for element in all_.keys():
-        obj = all_[element]
-        l = {
-            'name': obj[3],
-            'points': obj[1],
-            'solved': obj[2],
-            'flag': obj[4],
-            'description': obj[0],
-            'thread': obj[5],
-            'category': obj[6],
-            'id': obj[7],
-            'file': obj[8]
-        }
-        chall.append(l)
-
-    # Final Object
-    data = {
-        'name': ctfname,
-        'url': url,
-        'date': str(date.today()),
-        'formatflag':formatf,
-        'challenges': chall
-    }
-
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-
-    # If save option > New file
-    path = '%s/ctfd/%s/config.json'%(current_dir,ctf_name.lower())
-
-    # remove old config
-    if os.path.isfile(path):os.remove(path)
-
-    # Save the file in Json Format
-    with open(path, 'w', encoding='utf8') as json_file:json.dump(data, json_file, allow_nan=True)
-
-    logger('[+] Ctfd saved in config.json','info',1,1)
-
-def load(ctx=None,display_message=None):
-    global challenge_list, ctf_name, all_ctf, formatflag
-
-    # Last creation date   
-    lasttime    = 0
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    
-    # Enum in all ctfd
-    for ctf in  glob("%s/ctfd/*/"%current_dir):
-
-        current_list = {}
-        path = '%sconfig.json'%ctf
-
-        # If file exist
-        if(os.path.isfile(path)):
-
-            # Update last file date by default
-            t = os.path.getmtime(path)
-            if(t > lasttime or lasttime == 0):
-                ctf_name = ctf.split('/ctfd/')[1].replace('/','')
-                lasttime = t
-
-            # Read config.json
-            f = open(path)
-            content = str(f.read())
-            f.close()
-            data = json.loads(content)
-
-            #General infos
-            current = data["name"]
-            formatf = data["formatflag"]
-
-            # If no challenge selected > Load all
-            cpt = 0;
-
-            # Add in challenge list
-            for chall in data["challenges"]:
-                cpt += 1
-                current_list['[%s] %s'%(chall["category"],chall["name"])] = [chall["description"], chall["points"], chall["solved"], chall["name"], chall["flag"],chall["thread"],chall["category"],chall["id"],chall["file"]]
-            challenge_list.update(current_list)
-            all_ctf.append([current, current_list,data["url"],formatf])
-
-            ##OLD : https://pastebin.com/raw/NA03DapP > Load only challenge if found > Changed bcs useless
-           
-            # Load format Flag  
-            formatflag = formatf
-
-            logger("%s challenges loaded from : %s"%(str(cpt),current),"log",0,1)
-
-    if(display_message != True):
-        logger(f"All Challenges loaded !","info",1,1)
-
-def setup_session(session, url):
-    CONFIG["base_url"] = url
-    CONFIG["session"] = session
-
-def setup(username, password, url):
-    CONFIG['base_url'] = url
-    CONFIG['username'] = username
-    CONFIG['password'] = password
-
-async def createthread(ctx,category,name):
+async def createthread(ctx: Context, category, name):
     # OLD : 04/04/2022 https://pastebin.com/raw/6MpwZB5t
-    message = await ctx.send('[%s] %s'%(category,name))
+    message = await ctx.send(f"[{category}] {name}")
 
     # If is real challenge
-    if message.content in challenge_list.keys():
+    if message.content in ctx.selected_ctf.challenge_list.keys():
         try:
             # Create Thread
-            logger("Trying to Create Thread ...","info",1,2)
+            logging.info("Trying to Create Thread ...")
             challenge = challenge_list[message.content]
 
             thread = await message.create_thread(name=message.content + ' | %s'%str(challenge[1]))
@@ -210,7 +49,8 @@ async def createthread(ctx,category,name):
                 await channel.send("Description: %s"%str(challenge[0]))
 
                 # If not challenge > Load
-                if (ctf_name == "") : load()
+                if (ctf_name == "") :
+                    load()
 
                 # Create directory
                 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -238,96 +78,6 @@ async def createthread(ctx,category,name):
        logger("Thread %s already exist"%message.content,"error",1,1)
        return None
 
-async def start(ctx, channel):
-    global challenge_list, all_ctf, ctf_name,formatflag
-
-    # Parse infos
-    hostname = urlparse(CONFIG['base_url']).hostname
-    
-    logger("Printing Challenges:","info",1,1)
-    
-    # Parsing challenges
-    challenges = await utils.parser.get_challenges(ctx,CONFIG,session)
-
-    thread_context = None
-    current_list = {}
-    if(formatflag == None or formatflag == ''):
-        formatflag = 'flag'
-
-    # Enum on All channels
-    for challenge in challenges:# Scraping ...
-        
-        # Info on the challenge
-        category ,name ,description ,points ,id_ ,file  = challenge
-        current_list[f'[{category}] {name}'] = [description, points, False, name, "",0,category,id_,file]
-        
-        # IF not already printed 
-        
-        if(f'[{category}] {name}' not in challenge_list.keys()):
-            challenge_list.update(current_list)
-            thread_context = await createthread(channel,category,name)
-            if(thread_context != None):
-
-                # Send all file + analyse file if needed
-                for chall in file:
-                    try:
-
-                        # Check if size is not big
-                        url = str(CONFIG['base_url'])+str(chall)
-                        size = int(requests.head(url).headers["content-length"])
-                        if int(size)//(1024*1024) <= 50:
-
-                            # Curl file
-                            file_resp = requests.get(url, allow_redirects=True)
-                            file_name = os.path.basename(file_resp.url).split('?')[0]
-                            current_dir = os.path.dirname(os.path.abspath(__file__))
-                            path_file = '%s/ctfd/%s/%s/%s/%s'%(current_dir,ctf_name,category,name,file_name)
-
-                            # Save file
-                            open(path_file,'wb').write(file_resp.content)
-                            res_file = os.popen('file "%s"'%path_file).read().split('/%s/%s'%(name,file_name))[1]
-                            msg = "**File**: %s\n**Size**: %s\n**Info**: %s"%(file_name,human_filesize(size),res_file)
-
-                            # If size not OK
-                            if int(size)//(1024*1024) > 7.50:
-                                msg += '\n**Link**: %s'%url
-                                await thread_context.send(msg)
-                            else:
-                                # Send file
-                                await thread_context.send(msg+'```', file=discord.File(path_file))
-
-                            # If -a option > Analyse
-                            if(args.analyse_file):  
-                                await analyse_file(thread_context,path_file,formatflag,'[%s] %s'%(category,name))
-
-                    except Exception as ex:
-                        logger('Error in challenge: %s | %s'%(name,str(ex)),"error",0,1)
-        else:
-            challenge_list.update(current_list)
-
-
-        # Save 
-        # If already exist
-        saved = False
-        for ctf in all_ctf:
-            if(ctf_name == ctf[0]):
-                saved = True
-                for chall in current_list.keys():
-                    if(chall not in ctf[1].keys()):
-                        ctf[1][str(current_list[chall])] = current_list[chall]
-
-        # If not created
-        if(saved == False):
-            all_ctf.append([ctf_name, current_list,CONFIG['base_url'],formatflag])
-
-        # Save all 
-        saveconfig(ctf_name)
-
-        # Display info
-        logger(f'[{category}] {name}',"log",0,2)
-        logger("[Points] " + str(points),"log",0,2)
-        logger("[Description] " + str(challenge_list[f'[{category}] {name}'][0]),"log",0,2)
-
 async def confirmDL(ctx,filename):
     
     # Embed Message 
@@ -349,7 +99,7 @@ async def confirmDL(ctx,filename):
     return False
 
 async def createchannel(ctx, ChannelName):
-    global CategoryName, challenge_list
+    global channel_category_name, challenge_list
     logger("FUNCTION -> Create Channel:")
     guild = ctx.guild
 
@@ -364,16 +114,16 @@ async def createchannel(ctx, ChannelName):
             logger('Creating Channel "{0}" By {1.author}.'.format(ChannelName, ctx),"info",1,1)
 
             # Check If Category does not Exist
-            if(CategoryName not in str(list(bot.get_all_channels()))):
-                await ctx.guild.create_category(CategoryName)
+            if(channel_category_name not in str(list(bot.get_all_channels()))):
+                await ctx.guild.create_category(channel_category_name)
     
-            await guild.create_text_channel(ChannelName, category=discord.utils.get(guild.categories, name=CategoryName))
+            await guild.create_text_channel(ChannelName, category=discord.utils.get(guild.categories, name=channel_category_name))
     else:
         # Action Not Permitted
         logger('{0.author} not allowed.'.format(ctx),"error",1,2)
         await ctx.send("**[*] You are not allowed to run this command!**")  
 
-async def list_FileQueue(ctx,filename=None,formatflag=None,clean_name=None):
+async def list_FileQueue(ctx, filename=None,formatflag=None,clean_name=None):
     
     # List Files to analyses
     files = []
@@ -419,124 +169,6 @@ async def list_FileQueue(ctx,filename=None,formatflag=None,clean_name=None):
                 files.append(downloaded_file_path)
 
     return files
-
-async def analyse_file(ctx,filename=None,formatflag=None,clean_name=None):
-
-    challenge = None
-    print(type(ctx))
-    if (len(ctx.message.attachments) > 0):filename = ctx.message.attachments[0].url
-
-    # Get Challenge Name
-    challenge = ctx.message.channel if hasattr(ctx,'message') else ctx
-
-    # Reload Challenge if no loaded
-    if len(challenge_list.keys()) == 0: load(ctx)
-
-    # Cleaned name without 🚩 
-    if(clean_name == None): clean_name = challenge.name.split('|')[0].strip().replace("🚩", "")
-
-    # Sanitize Format flag
-    if(formatflag == None or formatflag == ''):formatflag = 'flag'
-    formatflag = formatflag.replace('{','').replace('}','')
-    
-    # List all path of file
-    all_files = await list_FileQueue(ctx,filename,formatflag,clean_name)
-
-    if(analyse_file == []):
-        await ctx.send('**[+] Challenge not found ...**')
-    else:
-
-        # Analyses Files
-        found = []
-
-        for f in all_files:
-            if(os.path.isfile(f)):
-
-                logger('Analysing %s'%f,"info",1,1)
-                await ctx.send(f'** [+] Analysing**')
-                
-                # Call analyse function
-                resp,embed_text,flag_found = utils.analyse_file.analysis(f,formatflag)
-                
-                # Add flag found to the list 
-                found += flag_found
-
-                # Embed
-                embed = discord.Embed(title="Analysis Result", description="File: "+os.path.basename(f),color=0x00ff00)
-                embed.add_field(name="Info : \n", value=embed_text)
-                await ctx.send(embed=embed)
-
-                # Send Result
-                await send_result(ctx,resp)
-
-                logger('End Analysing',"info",1,0)
-
-                # Send Flag Founded
-                if found != []: await ctx.send('**[+] Found: **\n```%s```'%found)
-
-                # End
-                await ctx.send('**[+] End Analysing**')
-
-########### OSINT### ########################################################################
-
-@bot.command()
-async def mail(ctx,mail=None):
-    if(mail == None):await send_result(ctx,['Usage: %semail example@google.com'%PREFIX])
-    else:
-        logger("Searching mail :  %s ..."%mail,"log",1,0)
-        await send_result(ctx,searchemail(mail))
-
-@bot.command()
-async def email(ctx,mail=None):
-    if(mail == None):
-        await send_result(ctx,['Usage: %semail example@google.com'%PREFIX])
-    else:
-        logger("Searching email :  %s ..."%mail,"log",1,0)
-        await send_result(ctx,searchemail(mail))
-
-@bot.command()
-async def user(ctx,user=None):
-    if(user == None):
-        await send_result(ctx,['Usage: %suser Xx_Dark_Killer98_xX'%PREFIX])
-    else:
-        logger("Searching user :  %s ..."%user,"log",1,0)
-        await send_result(ctx,searchuser(user))
-
-@bot.command()
-async def phone(ctx,phone=None):
-    if(phone == None):
-        await send_result(ctx,['Usage: %sphone 0751469XXX'%PREFIX])
-    else:
-        logger("Searching phone :  %s ..."%phone,"log",1,0)
-        await send_result(ctx,searchphone(phone))
-
-@bot.command()
-async def image(ctx,image):
-    if(image == None):
-        await send_result(ctx,['Usage: %simage http://myphotos.com/ABCDEF.png'%PREFIX])
-    else:
-        logger("Searching image :  %s ..."%image,"log",1,0)
-        await send_result(ctx,searchimage(image))
-
-async def send_result(ctx,content):
-    for element in content:
-        if type(element) == list :
-            path_report = element[1]
-            if(os.path.isfile(path_report)):                
-                # Upload file is Lengt < 8mb
-                cnt = element[0]
-                try:
-                    if sizeok(path_report):
-                        await ctx.send(cnt,file=discord.File(path_report))
-                        # Remove File
-                        os.system('rm %s'%path_report)
-                    else:
-                        await ctx.send('%s : File is too big %s'%(cnt,path_report))
-                except Exception as ex:
-                    logger(str(ex),"error",1,1)
-                    pass                            
-        else:           
-            await ctx.send(element)
 
 ########### Bot Part ########################################################################
 
@@ -873,7 +505,7 @@ async def CreateCTFD(ctx, Username=None, Password=None, Url=None, ChannelName=No
 
         # Login to CTFD
         logger("Trying to login to : %s"%Url,"info",1,1)  
-        islogged,CONFIG = await utils.parser.login(ctx,CONFIG,session)
+        islogged = await utils.parser.login(ctx,CONFIG,session)
 
         # If login Succeed
         if islogged != False:
@@ -904,54 +536,6 @@ async def CreateCTFD(ctx, Username=None, Password=None, Url=None, ChannelName=No
         await ctx.send("**[*] You are not allowed to run this command!**")  # Action Not Permitted
 
 @bot.command()
-async def CreateCTFDFromSession(ctx, Session=None, Url=None, ChannelName=None, formatf=None):   # Create CTFD Channels
-    global ctf_name, challenge_list, formatflag, CONFIG
-
-    # If not challenge Loaded > Load saved from files
-    if(len(challenge_list.keys()) == 0):
-        load(None,True)
-
-    # Check if Parameters are valid
-    if Session == None or Url == None or ChannelName == None:  # Break if invalid Settings
-        logger("Bad arguments","error",0,0)
-        await help(ctx)
-
-    # Sanitize format flag
-    ctf_name = ChannelName
-    if(formatf != None):
-        formatflag = formatf.replace('{','').replace('}','')
-
-    # If author as permissions
-    if ctx.author.guild_permissions.manage_channels:
-
-        # Start Create CTFD
-        logger("Creating CTFD channel","info",1,0)
-        
-        setup_session(Session, Url)
-        session.cookies.set("session", Session)
-
-        # Create Channel
-        await createchannel(ctx, ChannelName)
-
-        # Get Channel Object
-        logger("Logged in with user: %s"%CONFIG['username'],"log",0,1)
-        await ctx.send("**[+] Logged in with user: %s**"%CONFIG['username'])
-        channel = discord.utils.get(bot.get_all_channels(), name=ChannelName)    # Success
-
-        # Start Parsing
-        await start(ctx, channel)  # Start
-
-        # Save in config.json
-        saveconfig(ChannelName)
-        
-        logger("Thread Creation END","info",0,1)
-
-
-    else:
-        logger(' [*] {0.author} not allowed.'.format(ctx),"error",1,0)
-        await ctx.send("**[*] You are not allowed to run this command!**")  # Action Not Permitted
-
-@bot.command()
 async def end(ctx):
     # Check if Permissions are fine
     if ctx.author.guild_permissions.manage_channels:
@@ -960,15 +544,15 @@ async def end(ctx):
         catego = None
 
         # Check if Category 'End ctf' exist
-        if("End %s"%CategoryName not in str(list(bot.get_all_channels()))):
-            catego = await ctx.guild.create_category("End %s"%CategoryName)
+        if("End %s"%channel_category_name not in str(list(bot.get_all_channels()))):
+            catego = await ctx.guild.create_category("End %s"%channel_category_name)
         else:
             for c in bot.get_all_channels():
-                if("End %s"%CategoryName in str(c)):
+                if("End %s"%channel_category_name in str(c)):
                     catego = c
 
         # If CTF already Finished
-        if(str(channel_object.category) == "End %s"%CategoryName):
+        if(str(channel_object.category) == "End %s"%channel_category_name):
             await ctx.send("**[*] Ctf already ended**")
         else:
 
@@ -1018,10 +602,4 @@ async def pword(ctx):
 #############################################################################################
 
 if __name__ == '__main__':
-    parse_args()
-    #os.system('rm -r /tmp/*')
-    if not os.path.isdir('ctfd'):
-        os.makedirs('ctfd', exist_ok=True) 
-    
-    # Run Bot
     bot.run(TOKEN)

@@ -1,11 +1,8 @@
-import os
 import zmq
 
 #############################################################################################
 
 if __name__ == '__main__':
-    os.makedirs('ctfd', exist_ok=True)
- 
     context = zmq.Context()
     socket = context.socket(zmq.PAIR)
     socket.connect('tcp://127.0.0.1:5555')

@@ -10,8 +10,9 @@ import sys
 
 from prettytable import PrettyTable
 
-from helpers import ctfdhelper
+from helpers import ctfdhelper, rctf_helper
 from utils.other import saveconfig
+from framework.utils import not_implemented
 if TYPE_CHECKING:
     from server import Context
 
@@ -98,27 +99,68 @@ def select_ctf(ctx: Context, ctf_id: int):
     for ctf in ctx.ctf_dict.values():
         if ctf.id == ctf_id:
             ctx.selected_ctf = ctf
+            ctx.ctf_name = ctf.name
             return
     ctx.send("CTF id not found in CTF list")
     sys.exit()
 
 def flag(ctx: Context, args_list: list):
     logging.debug("Flagging challenge")
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('flag', nargs='?', type=str, help='')
+    args = parser.parse_args(args_list)
     if ctx.selected_challenge is None:
         ctx.send("You must select a challenge first")
         sys.exit()
+    if args.flag is not None:
+        ctx.selected_challenge.flag = args.flag
+
+        if ctx.endpoint == "rctf":
+            rctf_helper.flag(ctx, args.flag)
+        else:
+            not_implemented()
     ctx.selected_challenge.solved = True
+    saveconfig(ctx)
 
 def create_ctf(ctx: Context, args: list):
     logging.info("Launching appropriate create_ctf")
-    ctfdhelper.create_ctf(ctx, args)
+    if ctx.endpoint == "ctfd":
+        ctfdhelper.create_ctf(ctx, args)
+    elif ctx.endpoint == "rctf":
+        rctf_helper.create_ctf(ctx, args)
+    else:
+        not_implemented()
     saveconfig(ctx)
+
+def update(ctx: Context, args: list):
+    logging.info("Updating selected ctf")
+    if ctx.selected_ctf is None:
+        ctx.send("Bad arguments: please select a ctf first")
+        sys.exit()
+
+    if ctx.endpoint == "ctfd":
+        ctfdhelper.update_ctf(ctx, args)
+    elif ctx.endpoint == "rctf":
+        rctf_helper.update_ctf(ctx, args)
+    else:
+        not_implemented()
+    saveconfig(ctx)
+
 
 def show(ctx: Context, args_list: list):
     logging.debug("Showing challenge")
-    if ctx.selected_challenge is None:
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('id', nargs="?", type=int, help='Id of chall to show')
+    args = parser.parse_args(args_list)
+
+    if args.id is None and ctx.selected_challenge is None:
         ctx.send("You must select a challenge first")
         sys.exit()
-    ticket_path = ctx.selected_challenge.directory.joinpath("ticket")
-    msg = ticket_path.read_text(encoding="utf-8")
-    ctx.send(msg)
+    if args.id is not None:
+        if ctx.selected_ctf is None:
+            ctx.send("You must select a ctf first")
+            sys.exit()
+        select_challenge(ctx, args.id)
+
+    data = ctx.selected_challenge.json()
+    ctx.send(data)

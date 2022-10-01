@@ -12,16 +12,14 @@ import re
 
 import requests
 
+from framework.utils import UrlPath
 if TYPE_CHECKING:
     from server import Context
 
 def fetch(ctx: Context, url: str, request_session: requests.Session) -> Union[List[dict], dict]:
     res = request_session.get(url)
-    if '{\"message' in res.text:
-        msg = res.json()['message']
-        ctx.send(f'** [+] {msg}**')
-        return None
-    if not res.ok or not res.json()['success']:
+    data = res.json()
+    if not res.ok or data["kind"]!="goodChallenges":
         msg = "Failed fetching challenge!"
         logging.error(res.text)
         ctx.send(msg)
@@ -36,7 +34,7 @@ def login(ctx: Context) -> bool:
     if config['token'] is not None:
         ctx.send('**[+] Login using token ...**')
         session.headers.update({"Content-Type": "application/json"})
-        session.headers.update({"Authorization": f"Token {config['token']}"})
+        session.headers.update({"Authorization": f"Bearer {config['token']}"})
         resp = session.get(config['base_url']+'/api/v1/users/me').text
 
         # Valid token ?
@@ -92,37 +90,34 @@ def get_nonce(config: Dict, request_session: requests.Session) -> str:
     return ""
 
 def get_challenges(ctx: Context):
-    """Get challenges via ctfd api and order them in a list"""
+    """Get challenges via ctfd flag flag{omg_its_rsa}api and order them in a list"""
     logging.info('Getting challenges ...')
 
     config = ctx.request_config
     request_session = ctx.request_session
 
     # Get All challenges
-    challenges = fetch(ctx,urljoin(config['base_url'], '/api/v1/challenges'), request_session)
+    challenges = fetch(ctx,urljoin(config['base_url'], '/api/v1/challs'), request_session)
     result = []
 
     # Get info challenge one per one
     for challenge in challenges:
         try:
-            # Fetch api
-            res = fetch(ctx,urljoin(config['base_url'], f"/api/v1/challenges/{challenge['id']}"), request_session)
-            
             # Get Files
-            file = []
-            if('files' in res):
-                file = res['files']
+            files = []
+            if('files' in challenge):
+                files = challenge['files']
 
             #Other Infos  
-            category = res['category']
-            name = res['name'].replace(' ','_')  
-            description = str(res['description'])
-            points = str(res['value'])
-            solved = res['solved_by_me']
-            link = res['connection_info']
+            category = challenge['category']
+            name = challenge['name'].replace(' ','_')  
+            description = str(challenge['description'])
+            points = str(challenge['points'])
+            solved = False
+            link = None
             
             # Add all info in 'result' list
-            result.append([category, name, description, points, challenge["id"], file, solved, link])
+            result.append([category, name, description, points, challenge["id"], files, solved, link])
         except Exception as ex:
             logging.error("Error during fetching/grabbing a challenge")
             logging.error(ex)
@@ -132,3 +127,20 @@ def get_challenges(ctx: Context):
             break
 
     return sorted(result)
+
+def flag(ctx: Context, flag: str):
+    url = UrlPath(ctx.selected_ctf.url)
+    url = url.joinpath("api/v1/challs/", ctx.selected_challenge.serverside_id, "submit")
+    data = {"flag":flag}
+    res = ctx.request_session.post(url, json=data)
+    if not res.ok:
+        ctx.send(res.json())
+        exit()
+    return res.json()['data']
+
+def get_solved_challenges(ctx: Context):
+    url = UrlPath(ctx.selected_ctf.url)
+    url = url.joinpath("api/v1/users/me")
+    res = ctx.request_session.get(url)
+    data = res.json()["data"]
+    return data["solves"]

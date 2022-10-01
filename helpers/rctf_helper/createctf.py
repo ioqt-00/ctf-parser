@@ -107,6 +107,8 @@ def parse(ctx: Context):
     ctx.send("Getting challenges")
     challenges = utils.get_challenges(ctx)
 
+    solved_challenges_ssid_set = set([chall["id"] for chall in utils.get_solved_challenges(ctx)])
+
     challenge_dict = {}
     if ctx.flag_format is None or ctx.flag_format=='':
         ctx.flag_format = 'flag'
@@ -119,6 +121,10 @@ def parse(ctx: Context):
         file_msg = ""
         category, name, description, points, serverside_id, files, solved, link  = challenge
         challenge = Challenge(count, serverside_id, category, name, points, description, solved, link)
+
+        if challenge.serverside_id in solved_challenges_ssid_set:
+            challenge.solved = True
+
         challenge_banner = f"[{category}] {name}"
         challenge_dict[challenge_banner] = challenge
 
@@ -133,11 +139,11 @@ def parse(ctx: Context):
             for challfile in files:
                 try:
                     # Check if size is not big
-                    url = urljoin(ctx.request_config['base_url'],str(challfile))
+                    url = urljoin(ctx.request_config['base_url'],challfile['url'])
+                    file_name = challfile['name']
 
                     # Curl file
                     file_resp = requests.get(url, allow_redirects=True)
-                    file_name = os.path.basename(file_resp.url).split('?')[0]
                     file_path = chall_directory.joinpath(file_name)
                     # Save file
                     with open(file_path,'wb') as file:

@@ -15,7 +15,7 @@ from pathlib import Path
 import zmq
 import requests
 
-from framework import list_, select, configure, flag, create_ctf, show
+from framework import list_, select, configure, flag, create_ctf, show, update
 from framework.classes import Ctf, Challenge
 from utils.other import loadconfig
 
@@ -25,6 +25,9 @@ class Context():
     """Main context of the server, will be passed to submodules to handle the communication
     with the user"""
     def __init__(self):
+        self.DEBUG = False
+        self.endpoint = "rctf"
+
         self.challenge_dict: Dict[str, Challenge] = {}
         self.ctf_dict: Dict[str, Ctf] = {}
 
@@ -58,9 +61,9 @@ class Context():
 def main_switch(cmd, args) -> None:
     if cmd == "createCTF":
         create_ctf(CTX, args)
-    elif cmd in set("list","ls"):
+    elif cmd in set(["list","ls"]):
         list_(CTX, args)
-    elif cmd in set("select","cd"):
+    elif cmd in set(["select","cd"]):
         select(CTX, args)
     elif cmd == "config":
         configure()
@@ -68,10 +71,12 @@ def main_switch(cmd, args) -> None:
         flag(CTX, args)
     elif cmd == "show":
         show(CTX, args)
-    elif cmd == "reset":
+    elif cmd == "resetA":
         CTX.reset()
         loadconfig(CTX)
         return
+    elif cmd == "update":
+        update(CTX, args)
     else:
         CTX.send(f"Command not found: {cmd}")
     CTX.send("EOL")
@@ -84,6 +89,7 @@ def parse_args() -> argparse.Namespace:
                             'scraping ctfd plateform and collecting name, category,'\
                             'description and points of challenges.'
             )
+    parser.add_argument("--debug", action='store_true', help="Debug flag")
     args = parser.parse_args()
     return args
 
@@ -97,6 +103,8 @@ if __name__ == '__main__':
     SOCKET = zmq_context.socket(zmq.PAIR)
     SOCKET.bind('tcp://127.0.0.1:5555')
     CTX = Context()
+    if args.debug:
+        CTX.DEBUG = True
     loadconfig(CTX)
     while True:
         try:
