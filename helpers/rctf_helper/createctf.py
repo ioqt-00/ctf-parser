@@ -45,12 +45,15 @@ def create_ctf(ctx: Context, args: list) -> None:
     # Check if Parameters are valid
     if (password is None or username is None) and args.token is None:
         ctx.send("Bad arguments: auth missing")
+        ctx.send(parser.format_usage())
         sys.exit()
     elif url is None:
         ctx.send("Bad arguments: url missing")
+        ctx.send(parser.format_usage())
         sys.exit()
     elif ctf_name is None:
         ctx.send("Bad arguments: ctf_name missing")
+        ctx.send(parser.format_usage())
         sys.exit()
 
     # Sanitize format flag

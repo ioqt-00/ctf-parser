@@ -35,14 +35,14 @@ def login(ctx: Context) -> bool:
         ctx.send('**[+] Login using token ...**')
         session.headers.update({"Content-Type": "application/json"})
         session.headers.update({"Authorization": f"Bearer {config['token']}"})
-        resp = session.get(config['base_url']+'/api/v1/users/me').text
+        resp = session.get(config['base_url']+'/api/v1/users/me').json()
 
         # Valid token ?
-        if 'success\": true' in resp or "goodUserData" in resp:
-            config['username'] = json.loads(resp)["data"]["name"]
+        if resp["kind"]=="goodUserData":
+            config["username"] = resp["data"]["name"]
             return True
         else:
-            msg = json.loads(resp)["message"]
+            msg = resp["message"]
             ctx.send(f"```\nMessage:\n{msg}```")
     # login with user and password
     else:
@@ -134,9 +134,9 @@ def flag(ctx: Context, flag: str):
     data = {"flag":flag}
     res = ctx.request_session.post(url, json=data)
     if not res.ok:
-        ctx.send(res.json())
+        ctx.send(res.json()["message"])
         exit()
-    return res.json()['data']
+    ctx.send(res.json()["message"])
 
 def get_solved_challenges(ctx: Context):
     url = UrlPath(ctx.selected_ctf.url)

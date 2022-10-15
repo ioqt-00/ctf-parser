@@ -15,7 +15,7 @@ from pathlib import Path
 import zmq
 import requests
 
-from framework import list_, select, configure, flag, create_ctf, show, update
+from framework import list_, select, configure, flag, create_ctf, show, update, auth
 from framework.classes import Ctf, Challenge
 from utils.other import loadconfig
 
@@ -26,7 +26,7 @@ class Context():
     with the user"""
     def __init__(self):
         self.DEBUG = False
-        self.endpoint = "rctf"
+        self.endpoint = "ctfd"
 
         self.challenge_dict: Dict[str, Challenge] = {}
         self.ctf_dict: Dict[str, Ctf] = {}
@@ -46,6 +46,8 @@ class Context():
             'base_url': None,
             'token': None,
         }
+
+        self.socket = SOCKET
 
     def send(self, msg):
         SOCKET.send_string(msg)
@@ -75,6 +77,8 @@ def main_switch(cmd, args) -> None:
         CTX.reset()
         loadconfig(CTX)
         return
+    elif cmd == "auth":
+        auth(CTX, args)
     elif cmd == "update":
         update(CTX, args)
     else:

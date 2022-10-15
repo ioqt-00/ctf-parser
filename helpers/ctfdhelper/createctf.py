@@ -45,12 +45,15 @@ def create_ctf(ctx: Context, args: list) -> None:
     # Check if Parameters are valid
     if (password is None or username is None) and args.token is None:
         ctx.send("Bad arguments: auth missing")
+        ctx.send(parser.format_usage())
         sys.exit()
     elif url is None:
         ctx.send("Bad arguments: url missing")
+        ctx.send(parser.format_usage())
         sys.exit()
     elif ctf_name is None:
         ctx.send("Bad arguments: ctf_name missing")
+        ctx.send(parser.format_usage())
         sys.exit()
 
     # Sanitize format flag
@@ -79,6 +82,7 @@ def update_ctf(ctx: Context, args: list):
     # Check if Parameters are valid
     if (args.password is None or args.username is None) and args.token is None:
         ctx.send("Bad arguments: auth missing")
+        ctx.send(parser.format_usage())
         sys.exit()
 
     # Creation des setup pour le login
@@ -91,7 +95,6 @@ def update_ctf(ctx: Context, args: list):
     login_fetch_parse(ctx)
 
 def login_fetch_parse(ctx: Context):
-    # Login to CTFD
     logging.info("Trying to login to : %s", ctx.request_config['base_url'])
     islogged = utils.login(ctx)
     if not islogged:
@@ -122,7 +125,7 @@ def parse(ctx: Context):
         challenge_banner = f"[{category}] {name}"
         challenge_dict[challenge_banner] = challenge
 
-        chall_directory = ctx.rootpath.joinpath("ctfd", ctx.ctf_name, f"[{count}] [{category}] {name}")
+        chall_directory = ctx.rootpath.joinpath("ctfd", ctx.ctf_name, f"{count}_[{category}]_{name}")
         chall_directory.mkdir(parents=True, exist_ok=True)
         challenge.directory = chall_directory
         # IF not already printed
