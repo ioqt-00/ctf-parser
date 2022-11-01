@@ -7,6 +7,7 @@ from pathlib import PosixPath
 
 def not_implemented():
     logging.error("Not implemented")
+    return {"msg": "Not implemented"}
 
 class UrlPath(PosixPath):
     def joinpath(self, *args, **kwargs) -> str:

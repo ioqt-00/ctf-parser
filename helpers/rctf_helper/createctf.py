@@ -4,11 +4,9 @@
 
 from __future__ import annotations
 
-import os
 import sys
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
-import argparse
 import logging
 import subprocess
 
@@ -22,39 +20,24 @@ from . import utils
 if TYPE_CHECKING:
     from server import Context
 
-def create_ctf(ctx: Context, args: list) -> None:
-    parser = argparse.ArgumentParser(
-                description='',
-                exit_on_error=False
-            )
-    parser.add_argument("-t", "--token", help="Analyse all challenges downloaded files")
-    parser.add_argument("-u", "--username", help="Analyse all challenges downloaded files")
-    parser.add_argument("-p", "--password", help="Analyse all challenges downloaded files")
-    parser.add_argument("-n","--ctf_name", help="")
-    parser.add_argument("--url", help="")
-    parser.add_argument("-f","--flag_format", help="")
-    args = parser.parse_args(args)
-
-    password = args.password
-    username = args.username
-    token = args.token
-    url = args.url
-    ctf_name = args.ctf_name
-    flag_format = args.flag_format
+def create_ctf(ctx: Context, args: dict) -> None:
+    password = args.get("password")
+    username = args.get("username")
+    token = args.get("token")
+    url = args.get("url")
+    ctf_name = args.get("ctf_name")
+    flag_format = args.get("flag_format")
 
     # Check if Parameters are valid
-    if (password is None or username is None) and args.token is None:
+    if (password is None or username is None) and token is None:
         ctx.send("Bad arguments: auth missing")
-        ctx.send(parser.format_usage())
-        sys.exit()
+        return False
     elif url is None:
         ctx.send("Bad arguments: url missing")
-        ctx.send(parser.format_usage())
-        sys.exit()
+        return False
     elif ctf_name is None:
         ctx.send("Bad arguments: ctf_name missing")
-        ctx.send(parser.format_usage())
-        sys.exit()
+        return False
 
     # Sanitize format flag
     if flag_format is not None:
@@ -70,25 +53,20 @@ def create_ctf(ctx: Context, args: list) -> None:
     login_fetch_parse(ctx)
 
 def update_ctf(ctx: Context, args: list):
-    parser = argparse.ArgumentParser(
-            description='',
-            exit_on_error=False
-        )
-    parser.add_argument("-t", "--token", help="Analyse all challenges downloaded files")
-    parser.add_argument("-u", "--username", help="Analyse all challenges downloaded files")
-    parser.add_argument("-p", "--password", help="Analyse all challenges downloaded files")
-    args = parser.parse_args(args)
+    password = args.get("password")
+    username = args.get("username")
+    token = args.get("token")
 
     # Check if Parameters are valid
-    if (args.password is None or args.username is None) and args.token is None:
+    if (password is None or username is None) and token is None:
         ctx.send("Bad arguments: auth missing")
-        sys.exit()
+        return False
 
     # Creation des setup pour le login
     ctx.request_config['base_url'] = ctx.selected_ctf.url
-    ctx.request_config['username'] = args.username
-    ctx.request_config['password'] = args.password
-    ctx.request_config['token'] = args.token
+    ctx.request_config['username'] = username
+    ctx.request_config['password'] = password
+    ctx.request_config['token'] = token
     ctx.ctf_name = ctx.selected_ctf.name
 
     login_fetch_parse(ctx)

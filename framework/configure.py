@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-import sys
-import argparse
 from typing import TYPE_CHECKING
 
 from framework import not_implemented
@@ -17,31 +15,25 @@ if TYPE_CHECKING:
 def configure():
     not_implemented()
 
-def auth(ctx: Context, args: list):
-    parser = argparse.ArgumentParser(
-            description='',
-            exit_on_error=False
-        )
-    parser.add_argument("-t", "--token", help="Analyse all challenges downloaded files")
-    parser.add_argument("-u", "--username", help="Analyse all challenges downloaded files")
-    parser.add_argument("-p", "--password", help="Analyse all challenges downloaded files")
-    args = parser.parse_args(args)
+def auth(ctx: Context, args: dict):
+    username = args.get("username")
+    password = args.get("password")
+    token = args.get("token")
 
     # Check if Parameters are valid
-    if (args.password is None or args.username is None) and args.token is None:
+    if (password is None or username is None) and token is None:
         ctx.send("Bad arguments: auth missing")
-        ctx.send(parser.format_usage())
-        sys.exit() 
+        return False
     if ctx.selected_ctf is None:
         ctx.send("Select a ctf first")
-        sys.exit()
+        return False
 
-    if args.username is not None:
-        ctx.request_config['username'] = args.username
-    if args.password is not None:
-        ctx.request_config['password'] = args.password
-    if args.token is not None:
-        ctx.request_config['token'] = args.token
+    if username is not None:
+        ctx.request_config['username'] = username
+    if password is not None:
+        ctx.request_config['password'] = password
+    if token is not None:
+        ctx.request_config['token'] = token
     ctx.request_config['base_url'] = ctx.selected_ctf.url
 
     if ctx.endpoint == "ctfd":

@@ -21,6 +21,15 @@
             "program": "clients/cli.py",
             "console": "integratedTerminal",
             "justMyCode": true
+        },
+        {
+            "name": "kivy-client",
+            "type": "python",
+            "python": "/etc/miniconda3/envs/kivy/bin/python",
+            "request": "launch",
+            "program": "clients/kivy/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ]
 }

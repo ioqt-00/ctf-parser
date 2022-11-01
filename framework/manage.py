@@ -3,7 +3,6 @@
 # _authors_: ioqt
 
 from __future__ import annotations
-import argparse
 import logging
 from typing import TYPE_CHECKING
 import sys
@@ -16,15 +15,9 @@ from framework.utils import not_implemented
 if TYPE_CHECKING:
     from server import Context
 
-def list_(ctx: Context, args_list: list):
-    logging.debug("Listing ctf or challenges")
-    parser = argparse.ArgumentParser(description='')
-    parser.add_argument("--ctf", action='store_true', help="List ctf")
-    parser.add_argument("--challenge", action='store_true', help="List challenges in selected ctf")
-    args = parser.parse_args(args_list)
-
-    ctf = args.ctf
-    challenge = args.challenge
+def list_(ctx: Context, args: list):
+    ctf = args.get("ctf")
+    challenge = args.get("challenge")
 
     if not challenge and not ctf:
         if ctx.selected_ctf is None:
@@ -53,24 +46,22 @@ def list_challenges(ctx: Context):
 
 def list_ctf(ctx: Context):
     logging.debug("Listing ctf")
+    res_dict = {"ctfs":{}}
     for ctf in ctx.ctf_dict.values():
-        msg = f"[{ctf.id}] {ctf.name} : {len(ctf.challenge_dict.keys())} challenges."
-        ctx.send(msg)
+        res_dict["ctfs"][ctf.name] = {
+            "id": ctf.id,
+            "name": ctf.name,
+            "url": ctf.url,
+            "flag_format": ctf.flag_format,
+            "num_challs": len(ctf.challenge_dict.keys())
+        }
+    ctx.set_data(res_dict)
 
-def select(ctx: Context, args_list: list):
+def select(ctx: Context, args: dict):
     logging.debug("Selecting ctf or challenge")
-    parser = argparse.ArgumentParser(description='')
-    parser.add_argument('id', type=int, help='Id of either chall or ctf to select')
-    parser.add_argument("--ctf-id", action='store_true', help="Select ctf")
-    parser.add_argument("--challenge-id",
-                        action='store_true',
-                        help="Select challenge in selected ctf"
-                    )
-    args = parser.parse_args(args_list)
-
-    ctf_id = args.ctf_id
-    challenge_id = args.challenge_id
-    id = args.id
+    ctf_id = args.get("ctf_id")
+    challenge_id = args.get("challenge_id")
+    id = args.get("id")
 
     if not challenge_id and not ctf_id:
         if ctx.selected_ctf is None:
@@ -104,63 +95,63 @@ def select_ctf(ctx: Context, ctf_id: int):
     ctx.send("CTF id not found in CTF list")
     sys.exit()
 
-def flag(ctx: Context, args_list: list):
-    logging.debug("Flagging challenge")
-    parser = argparse.ArgumentParser(description='')
-    parser.add_argument('flag', nargs='?', type=str, help='')
-    args = parser.parse_args(args_list)
+def flag(ctx: Context, args: dict):
+    flag = args.get("flag")
+
     if ctx.selected_challenge is None:
         ctx.send("You must select a challenge first")
-        sys.exit()
-    if args.flag is not None:
-        ctx.selected_challenge.flag = args.flag
+        return
+    if flag is not None:
+        ctx.selected_challenge.flag = flag
 
         if ctx.endpoint == "rctf":
-            rctf_helper.flag(ctx, args.flag)
+            rctf_helper.flag(ctx, flag)
         else:
             not_implemented()
     ctx.selected_challenge.solved = True
     saveconfig(ctx)
 
-def create_ctf(ctx: Context, args: list):
+def create_ctf(ctx: Context, args: dict):
     logging.info("Launching appropriate create_ctf")
     if ctx.endpoint == "ctfd":
-        ctfdhelper.create_ctf(ctx, args)
+        res = ctfdhelper.create_ctf(ctx, args)
     elif ctx.endpoint == "rctf":
-        rctf_helper.create_ctf(ctx, args)
+        res = rctf_helper.create_ctf(ctx, args)
     else:
         not_implemented()
-    saveconfig(ctx)
+        res = False
+    if res:
+        saveconfig(ctx)
 
-def update(ctx: Context, args: list):
+def update(ctx: Context, args: dict):
     logging.info("Updating selected ctf")
     if ctx.selected_ctf is None:
         ctx.send("Bad arguments: please select a ctf first")
         sys.exit()
 
     if ctx.endpoint == "ctfd":
-        ctfdhelper.update_ctf(ctx, args)
+        res = ctfdhelper.update_ctf(ctx, args)
     elif ctx.endpoint == "rctf":
-        rctf_helper.update_ctf(ctx, args)
+        res = rctf_helper.update_ctf(ctx, args)
     else:
         not_implemented()
-    saveconfig(ctx)
+        res = False
+    if res:
+        saveconfig(ctx)
 
 
-def show(ctx: Context, args_list: list):
+def show(ctx: Context, args: dict):
     logging.debug("Showing challenge")
-    parser = argparse.ArgumentParser(description='')
-    parser.add_argument('id', nargs="?", type=int, help='Id of chall to show')
-    args = parser.parse_args(args_list)
 
-    if args.id is None and ctx.selected_challenge is None:
+    id = args.get("id")
+    if id is None and ctx.selected_challenge is None:
         ctx.send("You must select a challenge first")
-        sys.exit()
-    if args.id is not None:
+        return
+    if id is not None:
         if ctx.selected_ctf is None:
             ctx.send("You must select a ctf first")
-            sys.exit()
-        select_challenge(ctx, args.id)
+            return
+        select_challenge(ctx, id)
 
     data = ctx.selected_challenge.json()
-    ctx.send(data)
+    ctx.set_data(data)

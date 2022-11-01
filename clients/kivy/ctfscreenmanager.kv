@@ -1,0 +1,28 @@
+<CtfScreenManager>:
+
+<FirstScreen>:
+    name: 'main'
+    GridLayout:
+        canvas:
+            Rectangle:
+                color: red
+                center: root.center
+                size: 200, 2200
+
+<SecondScreen>:
+    name: 'second'
+    GridLayout:
+        Label: 
+            text: "second screen!"
+        Button:
+            text: "Main"
+            on_release: app.root.current = 'main'
+
+<CreateCtfScreen>:
+    name: 'create ctf'
+    GridLayout:
+        Label:
+            text: "third screen!"
+        Button:
+            text: "Main"
+            on_release: app.root.current = 'main'

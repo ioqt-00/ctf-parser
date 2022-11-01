@@ -7,26 +7,31 @@
 """main function of server, will communicate with a client and command the execution of
 info gathering, parsing & basic analysis"""
 
-import argparse
-import logging
 from typing import Dict
 from pathlib import Path
+import logging
+import argparse
+import json
 
-import zmq
+from flask import Flask, request, jsonify
 import requests
 
-from framework import list_, select, configure, flag, create_ctf, show, update, auth
+from framework.utils import not_implemented
 from framework.classes import Ctf, Challenge
+from framework import list_, select, configure, flag, create_ctf, show, update, auth
 from utils.other import loadconfig
 
-#########################################################################################
+DEBUG = False
+ENDPOINT = "ctfd"
+
+app = Flask(__name__)
 
 class Context():
     """Main context of the server, will be passed to submodules to handle the communication
     with the user"""
     def __init__(self):
-        self.DEBUG = False
-        self.endpoint = "ctfd"
+        self.endpoint = ENDPOINT
+        self.json = {"msg":""}
 
         self.challenge_dict: Dict[str, Challenge] = {}
         self.ctf_dict: Dict[str, Ctf] = {}
@@ -47,43 +52,102 @@ class Context():
             'token': None,
         }
 
-        self.socket = SOCKET
-
-    def send(self, msg):
-        SOCKET.send_string(msg)
-
-    def recv(self):
-        return SOCKET.recv_string()
-
     def reset(self):
         logging.debug("Resetting server")
         self.__init__()
 
+    def send(self, msg):
+        self.json["msg"] += f"{msg}\n"
 
-def main_switch(cmd, args) -> None:
-    if cmd == "createCTF":
-        create_ctf(CTX, args)
-    elif cmd in set(["list","ls"]):
-        list_(CTX, args)
-    elif cmd in set(["select","cd"]):
-        select(CTX, args)
-    elif cmd == "config":
-        configure()
-    elif cmd == "flag":
-        flag(CTX, args)
-    elif cmd == "show":
-        show(CTX, args)
-    elif cmd == "resetA":
-        CTX.reset()
-        loadconfig(CTX)
-        return
-    elif cmd == "auth":
-        auth(CTX, args)
-    elif cmd == "update":
-        update(CTX, args)
+    def flush(self):
+        res = self.json
+        self.json = {"msg":""}
+        return res
+
+    def set_data(self, data):
+        if isinstance(data, str):
+            data = json.loads(data)
+        msg = data.get("msg","")
+        msg = self.json["msg"] + msg
+        self.json = data
+        self.json["msg"] = msg
+
+@app.route("/")
+def index():
+    return "Hey pal, this is ctfd-parser server"
+
+@app.route("/create-ctf")
+def launch_create_ctf():
+    if request.json is not None:
+        args = json.loads(request.json)
     else:
-        CTX.send(f"Command not found: {cmd}")
-    CTX.send("EOL")
+        args = {}
+    create_ctf(CTX, args)
+    return CTX.flush()
+
+@app.route("/list")
+def launch_list():
+    if request.json is not None:
+        args = json.loads(request.json)
+    else:
+        args = {}
+    list_(CTX, args)
+    return CTX.flush()
+
+@app.route("/select")
+def launch_select():
+    if request.json is not None:
+        args = json.loads(request.json)
+    else:
+        args = {}
+    select(CTX, args)
+    return CTX.flush()
+
+@app.route("/config")
+def config():
+    return not_implemented()
+
+@app.route("/flag")
+def launch_flag():
+    if request.json is not None:
+        args = json.loads(request.json)
+    else:
+        args = {}
+    flag(CTX, args)
+    return CTX.flush()
+
+@app.route("/show")
+def launch_show():
+    if request.json is not None:
+        args = json.loads(request.json)
+    else:
+        args = {}
+    show(CTX, args)
+    return CTX.flush()
+
+@app.route("/reset")
+def reset():
+    CTX.reset()
+    loadconfig(CTX)
+    return {"msg":"Context reset"}
+
+@app.route("/auth")
+def launch_auth():
+    if request.json is not None:
+        args = json.loads(request.json)
+    else:
+        args = {}
+    auth(CTX, args)
+    return CTX.flush()
+
+@app.route("/update")
+def launch_update():
+    if request.json is not None:
+        args = json.loads(request.json)
+    else:
+        args = {}
+    update(CTX, args)
+    return CTX.flush()
 
 #############################################################################################
 
@@ -103,26 +167,10 @@ if __name__ == '__main__':
     format_ = "%(levelname)s %(asctime)s %(message)s"
     logging.basicConfig(format=format_, datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.DEBUG)
 
-    zmq_context = zmq.Context()
-    SOCKET = zmq_context.socket(zmq.PAIR)
-    SOCKET.bind('tcp://127.0.0.1:5555')
     CTX = Context()
     if args.debug:
         CTX.DEBUG = True
+
     loadconfig(CTX)
-    while True:
-        try:
-            CTX.send("server > ")
-            msg = CTX.recv()
-            if msg != "":
-                cmd_args = msg.split()
-                cmd = cmd_args[0].strip()
-                args = cmd_args[1:]
-                main_switch(cmd, args)
-        except Exception as e:
-            import traceback
-            res = traceback.format_exception(e)
-            CTX.send("".join(res))
-            CTX.send("EOL")
-        except SystemExit:
-            CTX.send("EOL")
+
+    app.run()

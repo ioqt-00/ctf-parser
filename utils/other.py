@@ -10,7 +10,7 @@ import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from server import Context
+    from server_old import Context
 
 def human_filesize(size: int) -> str:
     """Return given size in humlan readable format"""
